@@ -51,7 +51,37 @@ class GptService extends EventEmitter {
       { "role": "assistant", "content": "Hello! I understand you're looking for a pair of AirPods, is that correct?" },
     ],
       this.partialResponseIndex = 0
+    this.currentStream;
+    this.interrupted = false;
   }
+
+  userContinuation(text, interactionCount) {
+    let lastMessage = this.userContext.pop();
+    let newMessage = lastMessage.content + text;
+    console.log("changing last mesasge from '" + lastMessage.content + " ' to '" + lastMessage.content + text + "'");
+    if (lastMessage.role === 'user') {
+      this.userContext.push({
+        "role": "user",
+        "content": (newMessage)
+      });
+
+    } else if (lastMessage.role === 'assistant') {
+      lastMessage = this.userContext.pop();
+      newMessage = lastMessage.content + text;
+      console.log("changing last mesasge from '" + lastMessage.content + " ' to '" + newMessage + "'");
+      if (lastMessage.role === 'user') {
+        this.userContext.push({
+          "role": "user",
+          "content": (newMessage)
+        });
+      }
+    }
+    this.interrupted = true;
+    this.currentStream = null; // close out the current streaming response
+    setTimeout(function(){}, 1000);
+    this.completion(newMessage, interactionCount); // generate a new completion with the new response
+  }
+
 
   async completion(text, interactionCount, role = "user", name = "user") {
     if (role === "function") {
@@ -67,7 +97,7 @@ class GptService extends EventEmitter {
     };
 
     // Send user transcription to Chat GPT
-    const stream = await this.openai.chat.completions.create({
+    this.currentStream = await this.openai.chat.completions.create({
       model: "gpt-4-1106-preview",
       // model: "gpt-4",
       messages: this.userContext,
@@ -81,7 +111,11 @@ class GptService extends EventEmitter {
     let functionArgs = ""
     let finishReason = ""
     let startdt = new Date();
-    for await (const chunk of stream) {
+    for await (const chunk of this.currentStream) {
+      if (this.interrupted) {
+        this.interrupted = false;
+        return;
+      }
       let content = chunk.choices[0]?.delta?.content || ""
       let deltas = chunk.choices[0].delta
 
