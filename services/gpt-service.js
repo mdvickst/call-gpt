@@ -87,7 +87,7 @@ class GptService extends EventEmitter {
 
       // check if GPT wanted to call a function
       if (deltas.tool_calls) {
-        //console.log(deltas.tool_calls);
+        console.log(deltas.tool_calls);
 
         // get the name of the function and any arguments being passed in
         let name = deltas.tool_calls[0]?.function?.name || "";
