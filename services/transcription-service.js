@@ -27,7 +27,8 @@ class TranscriptionService extends EventEmitter {
       if (transcription.type === "UtteranceEnd") {
         if (!this.speechFinal) {
           console.log("UtteranceEnd received before speechFinal, emit the text collected so far: "+ this.finalResult)
-          this.emit("transcription", this.finalResult);
+          let enddt = new Date();
+          this.emit("transcription", this.finalResult, startdt, enddt);
           return;
         } else {
           // console.log("speech was already final when UtteranceEnd recevied");
